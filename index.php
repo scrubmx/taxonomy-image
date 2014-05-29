@@ -58,3 +58,25 @@
 
 	/** @todo implement get_the_term_thumbnail */
 	/** @todo implement has_term_thumbnail */
+
+
+
+	function ajax_save_term_attachment() {
+		global $wpdb;
+
+		if ( ! isset($_POST['term_id']) ) wp_send_json_error();
+
+		extract($_POST);
+
+		$result = $wpdb->query(
+			"INSERT INTO {$wpdb->prefix}term_attachments ( term_id, attachment_id )
+				VALUES( $term_id, $attachment_id ) ON DUPLICATE KEY
+					UPDATE term_id = VALUES(term_id), attachment_id = VALUES(attachment_id);"
+		);
+
+		if ( ! $result ) wp_send_json_error();
+
+		wp_send_json_success();
+	}
+	add_action('wp_ajax_ajax_save_term_attachment', 'ajax_save_term_attachment');
+	add_action('wp_ajax_nopriv_ajax_save_term_attachment', 'ajax_save_term_attachment');
