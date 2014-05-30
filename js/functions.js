@@ -4,7 +4,6 @@
 
 	$(function(){
 
-
 		var Uploader = {};
 
 		/**
@@ -13,60 +12,65 @@
 		 * @type object
 		 */
 		Uploader.options = {
-			title   : 'Taxonomy Image',
-			library : { type: 'image' },
-			button  : { close: true }
+			title    : 'Taxonomy Image',
+			library  : { type: 'image' },
+			button   : { close: true },
+            multiple : false
 		};
 
 		/**
 		 * Create the media frame.
+         *
 		 */
-		Uploader.mediaFrame = function ()
+		Uploader.mediaFrame = function (term_id)
 		{
-			this.frame = wp.media( this.options );
+            /**
+             * @todo pass diferent data (this seems to be the only way to open the frame reliably)
+             * @link http://mikejolley.com/2012/12/using-the-new-wordpress-3-5-media-uploader-in-plugins/#gist4351223
+             */
+           if ( typeof(this.frame) !== 'undefined')
+           {
+                this.frame.uploader.uploader.param( 'term_id', term_id );
+
+                return this.frame;
+           }
+
+            wp.media.model.settings.term_id = term_id;
+
+			this.frame = wp.media.frames.file_frame = wp.media( this.options );
+
 
 			return this.frame;
 		};
 
 
-		Uploader.updateDatabase = function (term_id, attachment_id)
-		{
-			return $.post(ajax_url, {
-				term_id: term_id,
-				attachment_id: attachment_id,
-				action: 'ajax_save_term_attachment'
-			}, 'json');
-		};
-
-		/**
-		 * Save the term attachment relationship
-		 *
-		 * @param  {[type]} term_id
-		 * @param  {[type]} attachment
-		 * @return {[type]}
-		 */
-		Uploader.save = function (term_id, attachment)
-		{
-			this.updateDatabase(term_id, attachment.id)
-			.done(function (response) {
-				console.log(response);
-			})
-		};
-
-
-		$('.add-term-image').on('click', function (e) {
+		$(document).on('click', '.add-term-image', function (e) {
 			e.preventDefault();
 
-			var term_id = $(this).data('term_id');
+            var $this   = $(this),
+                term_id = $(this).data('term_id');
 
-			var frame = Uploader.mediaFrame().open();
+			var frame = Uploader.mediaFrame(term_id).open();
 
 			/**
 			 * When an image is selected, run a callback.
+             *
+             * @todo Refactor this fucking mess.
 			 */
 			frame.on('select', function () {
 				var attachment = frame.state().get('selection').first();
-				Uploader.save( term_id, attachment );
+                
+                console.log(attachment);
+              /*  $.post(ajax_url, {
+                    term_id: term_id,
+                    attachment_id: attachment.id,
+                    action: 'ajax_save_term_attachment'
+                }, 'json').done(function(response){
+                    if (response.success) {
+                        var image = $(response.data);
+                        $this.replaceWith( image );
+                    }
+                });*/
 			});
 
 		});

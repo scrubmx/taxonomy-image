@@ -28,7 +28,9 @@
 
 
 	add_action( 'admin_init', function() {
+
 		$instance = new Taxonomy\Attachment();
+
 	});
 
 
@@ -76,7 +78,12 @@
 
 		if ( ! $result ) wp_send_json_error();
 
-		wp_send_json_success();
+		$attachment = Taxonomy\Attachment::thumbnail( $term_id, 'thumbnail', [
+			'class'        => 'add-term-image',
+			'data-term_id' => $term_id
+		] );
+
+		wp_send_json_success($attachment);
 	}
 	add_action('wp_ajax_ajax_save_term_attachment', 'ajax_save_term_attachment');
 	add_action('wp_ajax_nopriv_ajax_save_term_attachment', 'ajax_save_term_attachment');

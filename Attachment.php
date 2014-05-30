@@ -7,13 +7,26 @@ class Attachment {
 	/**
 	 * @var array
 	 */
-	public $taxonomies = ['director'];
+	public $taxonomies;
+
+	/*
+	 * @var array
+	 */
+	private $excluded = [
+		'post_tag',
+		'nav_menu',
+		'link_category',
+		'post_format'
+	];
 
 
 	public function __construct()
 	{
+		$this->taxonomies = get_taxonomies();
+
 		array_map([$this, 'manage_taxonomies_columns'], $this->taxonomies);
 
+		add_action('admin_enqueue_scripts', [$this, 'enqueue_admin_styles']);
 		add_action('admin_enqueue_scripts', [$this, 'enqueue_admin_scripts']);
 		add_action('admin_enqueue_scripts', [$this, 'localize_admin_scripts']);
 	}
@@ -25,6 +38,14 @@ class Attachment {
 	public static function activation_hook_callback()
 	{
 		self::create_attachment_row();
+	}
+
+	/**
+	 * Register and enqueue admin styles.
+	 */
+	public function enqueue_admin_styles()
+	{
+		wp_enqueue_style( 'term-image-styles', plugins_url('css/style.css', __FILE__ ) );
 	}
 
 	/**
@@ -62,7 +83,7 @@ class Attachment {
 				term_id BIGINT(20) UNSIGNED NOT NULL,
 				attachment_id BIGINT(20) UNSIGNED NOT NULL,
 				PRIMARY KEY (id),
-				UNIQUE KEY term_attachment_index (term_id, attachment_id),
+				UNIQUE KEY term_id_unique (term_id),
 				INDEX term_id_index (term_id),
 				INDEX attachment_id_index (attachment_id),
 				FOREIGN KEY (term_id) REFERENCES $wpdb->terms (term_id) ON DELETE CASCADE,
@@ -89,9 +110,12 @@ class Attachment {
 	 */
 	public function manage_taxonomies_columns($taxonomy)
 	{
-		add_filter( "manage_{$taxonomy}_custom_column", [$this, 'taxonomy_rows'], 15, 3 );
-		add_filter( "manage_edit-{$taxonomy}_columns", [$this, 'taxonomy_columns'] );
-		add_action( "{$taxonomy}_edit_form_fields", [$this, 'edit_tag_form'], 10, 2 );
+		if ( ! in_array($taxonomy, $this->excluded) )
+		{
+			add_filter( "manage_{$taxonomy}_custom_column", [$this, 'taxonomy_rows'], 15, 3 );
+			add_filter( "manage_edit-{$taxonomy}_columns", [$this, 'taxonomy_columns'] );
+			add_action( "{$taxonomy}_edit_form_fields", [$this, 'edit_tag_form'], 10, 2 );
+		}
 	}
 
 	/**
@@ -133,14 +157,13 @@ class Attachment {
 	 */
 	public function edit_tag_form( $term, $taxonomy )
 	{
-		require_once plugin_dir_path( __FILE__ ).'templates/form-field.php';
+		require_once plugin_dir_path( __FILE__ ).'views/form-field.php';
 	}
 
 	/**
 	 * Display the image preview.
 	 *
 	 * @param $term_id
-	 * @param $taxonomy
 	 * @return string
 	 */
 	public function preview_image( $term_id )
@@ -152,7 +175,10 @@ class Attachment {
 
 	public function upload_image_button($term_id)
 	{
-		echo "<button class='button add-term-image' data-term_id='$term_id'>Añadir imagen</button>";
+		// $placeholder = plugin_dir_path( __FILE__ ).'images/placeholder.png';
+		$placeholder = plugins_url('images/placeholder.png', __FILE__ );
+
+		echo "<img src='$placeholder' class='add-term-image' data-term_id='$term_id'/>";
 	}
 
 	/**
@@ -181,6 +207,11 @@ class Attachment {
 	public static function thumbnail( $term_id, $size = 'thumbnail', $attr = '' )
 	{
 		$attachment_id = self::get_attchment_id( $term_id );
+
+		$attr = wp_parse_args( $attr, [
+			'class'        => 'add-term-image',
+			'data-term_id' => $term_id
+		] );
 
 		return wp_get_attachment_image( $attachment_id, $size, false, $attr );
 	}
